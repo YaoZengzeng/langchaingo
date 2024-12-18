@@ -13,10 +13,12 @@ import (
 const _intermediateStepsOutputKey = "intermediateSteps"
 
 // Chain is the interface all chains must implement.
+// Chain是接口，所有的chains必须实现
 type Chain interface {
 	// Call runs the logic of the chain and returns the output. This method should
 	// not be called directly. Use rather the Call, Run or Predict functions that
 	// handles the memory and other aspects of the chain.
+	// Call运行logic of the chain并且返回output，这个方法不能直接调用，使用Run或者Predict函数，处理内存以及chain的其他部门
 	Call(ctx context.Context, inputs map[string]any, options ...ChainCallOption) (map[string]any, error)
 	// GetMemory gets the memory of the chain.
 	GetMemory() schema.Memory
@@ -27,6 +29,7 @@ type Chain interface {
 }
 
 // Call is the standard function used for executing chains.
+// Call是标准的函数用于执行chain
 func Call(ctx context.Context, c Chain, inputValues map[string]any, options ...ChainCallOption) (map[string]any, error) { // nolint: lll
 	fullValues := make(map[string]any, 0)
 	for key, value := range inputValues {

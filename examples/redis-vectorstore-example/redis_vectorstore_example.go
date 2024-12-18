@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/embeddings"
@@ -49,9 +50,18 @@ func main() {
 	}
 
 	_, err = store.AddDocuments(ctx, data)
+	if err != nil {
+		fmt.Printf("Add Documents to store failed: %v", err)
+		os.Exit(-1)
+	}
 	docs, err := store.SimilaritySearch(ctx, "Tokyo", 2,
 		vectorstores.WithScoreThreshold(0.5),
 	)
+	if err != nil {
+		fmt.Printf("Similarity Search for Tokyo failed: %v\n", err)
+		os.Exit(-1)
+	}
+	fmt.Println("Similarity Search for Tokyo")
 	fmt.Println(docs)
 
 	result, err := chains.Run(
@@ -62,6 +72,11 @@ func main() {
 		),
 		"What colors is each piece of furniture next to the desk?",
 	)
+	if err != nil {
+		fmt.Printf("Chains run failed: %v\n", err)
+		os.Exit(-1)
+	}
+	fmt.Println("Result of chains.Run")
 	fmt.Println(result)
 }
 
