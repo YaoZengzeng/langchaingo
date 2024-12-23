@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/embeddings"
@@ -21,7 +20,7 @@ func main() {
 	redisURL := "redis://127.0.0.1:6379"
 	index := "test_redis_vectorstore"
 
-	llm, e := getEmbedding("gemma:2b", "http://127.0.0.1:11434")
+	llm, e := getEmbedding("gemma:7b", "http://127.0.0.1:11434")
 	ctx := context.Background()
 
 	store, err := redisvector.New(ctx,
@@ -51,18 +50,128 @@ func main() {
 
 	_, err = store.AddDocuments(ctx, data)
 	if err != nil {
-		fmt.Printf("Add Documents to store failed: %v", err)
-		os.Exit(-1)
+		log.Fatalf("Add Documents to store failed: %v", err)
 	}
+
+	_, err = store.AddDocuments(context.Background(), []schema.Document{
+		{
+			PageContent: "What is the Github?",
+		},
+	})
+	if err != nil {
+		log.Fatalf("Add Documents to store failed: %v", err)
+	}
+
+	// Add documents to the Redis vector store.
+	_, err = store.AddDocuments(context.Background(), []schema.Document{
+		{
+			PageContent: "A city in texas",
+			Metadata: map[string]any{
+				"area": 3251,
+			},
+		},
+		{
+			PageContent: "A country in Asia",
+			Metadata: map[string]any{
+				"area": 2342,
+			},
+		},
+		{
+			PageContent: "A country in South America",
+			Metadata: map[string]any{
+				"area": 432,
+			},
+		},
+		{
+			PageContent: "An island nation in the Pacific Ocean",
+			Metadata: map[string]any{
+				"area": 6531,
+			},
+		},
+		{
+			PageContent: "A mountainous country in Europe",
+			Metadata: map[string]any{
+				"area": 1211,
+			},
+		},
+		{
+			PageContent: "A lost city in the Amazon",
+			Metadata: map[string]any{
+				"area": 1223,
+			},
+		},
+		{
+			PageContent: "A city in England",
+			Metadata: map[string]any{
+				"area": 4324,
+			},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	docs, err := store.SimilaritySearch(ctx, "Tokyo", 2,
 		vectorstores.WithScoreThreshold(0.5),
 	)
 	if err != nil {
-		fmt.Printf("Similarity Search for Tokyo failed: %v\n", err)
-		os.Exit(-1)
+		log.Fatalf("Similarity Search for Tokyo failed: %v\n", err)
 	}
-	fmt.Println("Similarity Search for Tokyo")
+	fmt.Println("Similarity Search for Tokyo, score threshold 0.5")
 	fmt.Println(docs)
+	fmt.Println("\n")
+
+	docs, err = store.SimilaritySearch(ctx, "What's the github", 2,
+		vectorstores.WithScoreThreshold(0.5),
+	)
+	if err != nil {
+		log.Fatalf("Similarity Search for github failed: %v\n", err)
+	}
+	fmt.Println("Similarity Search for Github, score threshold 0.8")
+	fmt.Println(docs)
+	fmt.Println("\n")
+
+	// Search for similar documents.
+	docs, err = store.SimilaritySearch(ctx, "england", 1)
+	if err != nil {
+		log.Fatalf("Similarity Search for England failed: %v\n", err)
+	}
+	fmt.Println("Similarity Search for England")
+	fmt.Println(docs)
+	fmt.Println("\n")
+
+	// Search for similar documents using score threshold.
+	docs, err = store.SimilaritySearch(ctx, "american places", 10, vectorstores.WithScoreThreshold(0.80))
+	if err != nil {
+		log.Fatalf("Similarity Search for American places failed: %v\n", err)
+	}
+	fmt.Println("Similarity Search for American places with score threshold 0.80")
+	fmt.Println(docs)
+	fmt.Println("\n")
+	/*
+		// Search for similar documents using score threshold and metadata filter.
+		filter := map[string]interface{}{
+			"must": []map[string]interface{}{
+				{
+					"key": "area",
+					"range": map[string]interface{}{
+						"lte": 3000,
+					},
+				},
+			},
+		}*/
+
+	docs, err = store.SimilaritySearch(ctx, "only cities in south america",
+		10,
+		vectorstores.WithScoreThreshold(0.80),
+		// vectorstores.WithFilters(filter))
+	)
+	if err != nil {
+		log.Fatalf("Similarity Search for only cities in south america failed: %v\n", err)
+	}
+	fmt.Println("Similarity Search for only cities in south america with score threshold 0.80 and metadata filter")
+	fmt.Println(docs)
+	fmt.Println("\n")
 
 	result, err := chains.Run(
 		ctx,
@@ -73,9 +182,9 @@ func main() {
 		"What colors is each piece of furniture next to the desk?",
 	)
 	if err != nil {
-		fmt.Printf("Chains run failed: %v\n", err)
-		os.Exit(-1)
+		log.Fatalf("Chains run failed: %v\n", err)
 	}
+
 	fmt.Println("Result of chains.Run")
 	fmt.Println(result)
 }
